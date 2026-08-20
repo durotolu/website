@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
 import { siteConfig } from "./src/config";
 
-const site = siteConfig.url || "http://localhost:4321";
+const site = siteConfig.url;
 
 export default defineConfig({
   site,

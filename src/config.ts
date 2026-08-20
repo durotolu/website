@@ -8,8 +8,8 @@ export const siteConfig = {
   description:
     "I build software, explore ideas, and write about what I learn — a home for writing, projects, and experiments.",
   tagline: "I build software, explore ideas, and write about what I learn.",
-  /** Set this to your production origin before deploy (used for canonicals, sitemap, RSS, OG). */
-  url: "" as string,
+  /** Production origin (no trailing slash). Used for canonicals, sitemap, RSS, OG. */
+  url: "https://modurotolu.com",
   locale: "en",
   author: {
     name: "Modurotolu Olokode",

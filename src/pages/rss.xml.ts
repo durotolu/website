@@ -9,7 +9,7 @@ export async function GET(context: APIContext) {
     .filter((entry) => !isExternalWriting(entry))
     .sort(byDateDesc);
 
-  const site = context.site?.toString() || "http://localhost:4321";
+  const site = context.site?.toString() || siteConfig.url;
 
   return rss({
     title: `${siteConfig.name} — Writing`,

@@ -7,8 +7,8 @@ export function websiteJsonLd() {
     name: siteConfig.name,
     description: siteConfig.description,
     inLanguage: siteConfig.locale,
+    url: siteConfig.url,
   };
-  if (siteConfig.url) data.url = siteConfig.url;
   return data;
 }
 
@@ -20,8 +20,8 @@ export function personJsonLd() {
     jobTitle: siteConfig.author.jobTitle,
     email: siteConfig.author.email,
     sameAs: [siteConfig.social.github, siteConfig.social.linkedin],
+    url: siteConfig.url,
   };
-  if (siteConfig.url) data.url = siteConfig.url;
   return data;
 }
 

@@ -34,7 +34,7 @@ npm run format
 Edit [`src/config.ts`](src/config.ts). That is the only place you should need for:
 
 - Name, title, tagline, description
-- Production `url` (set this before deploy; used for canonicals, sitemap, RSS, Open Graph)
+- Production `url` (`https://modurotolu.com`; used for canonicals, sitemap, RSS, Open Graph)
 - Email, GitHub, LinkedIn
 - CV path
 - Default social image
@@ -132,18 +132,46 @@ Edit [`src/pages/now.astro`](src/pages/now.astro). It is meant to be updated by 
 
 ## Deploy
 
-This is a static site (`dist/`).
+This is a static site (`dist/`). Production origin is `https://modurotolu.com` in [`src/config.ts`](src/config.ts).
 
-1. Set `url` in `src/config.ts` to your production origin (no trailing slash).
-2. Connect the GitHub repo to [Cloudflare Pages](https://developers.cloudflare.com/pages/) or [Vercel](https://vercel.com/).
-3. Build command: `npm run build`
-4. Output directory: `dist`
+1. Connect the GitHub repo to [Vercel](https://vercel.com/) or [Cloudflare Pages](https://developers.cloudflare.com/pages/).
+2. Build command: `npm run build`
+3. Output directory: `dist`
+4. Add both `modurotolu.com` and `www.modurotolu.com` on the host, then point Namecheap DNS at it (below).
 
-Optional headers live in [`public/_headers`](public/_headers) (Cloudflare) and [`vercel.json`](vercel.json).
+`www` redirects to the apex. Headers live in [`public/_headers`](public/_headers) (Cloudflare) and [`vercel.json`](vercel.json).
+
+### Namecheap DNS
+
+Leave nameservers on **Namecheap BasicDNS** unless you move DNS to Cloudflare.
+
+In **Domain List → modurotolu.com → Advanced DNS**, remove Namecheap parking/URL-redirect records, then add:
+
+**Vercel** (after adding the domain in the Vercel project):
+
+| Type  | Host | Value                 |
+| ----- | ---- | --------------------- |
+| A     | `@`  | `76.76.21.21`         |
+| CNAME | `www`| `cname.vercel-dns.com`|
+
+Confirm the A record in Vercel’s domain settings if they list a different IP.
+
+**Cloudflare Pages** (if you keep DNS at Namecheap):
+
+| Type  | Host | Value                         |
+| ----- | ---- | ----------------------------- |
+| CNAME | `@`  | `<project>.pages.dev`         |
+| CNAME | `www`| `<project>.pages.dev`         |
+
+Namecheap supports CNAME on `@` via ALIAS/CNAME flattening. If you use Cloudflare DNS instead, change nameservers to the ones Cloudflare gives you and add the domain in Pages.
+
+DNS can take a few minutes to a few hours. After it resolves, SSL is issued automatically by Vercel or Cloudflare.
+
+Optional: in Namecheap **Redirect Email**, forward `hello@modurotolu.com` (or any alias) to your existing inbox. The site still uses the address in `src/config.ts` until you change it.
 
 ## Analytics
 
-In `src/config.ts`, set `analytics.plausibleDomain` to the domain you registered with Plausible (for example `yourdomain.com`). If it is empty, no analytics script is loaded.
+In `src/config.ts`, set `analytics.plausibleDomain` to `modurotolu.com` after you add that domain in Plausible. If it is empty, no analytics script is loaded.
 
 ## Newsletter
 
