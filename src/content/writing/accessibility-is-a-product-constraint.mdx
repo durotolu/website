@@ -1,0 +1,54 @@
+---
+title: "Accessibility is a product constraint"
+description: "Treat accessibility as a design input, not a cleanup ticket. The work is mostly semantics, focus, and contrast — and it changes what you ship."
+pubDate: 2026-08-18
+tags:
+  - accessibility
+  - frontend
+  - product
+draft: false
+featured: true
+heroImage: null
+---
+
+It is tempting to treat accessibility as a late checklist: alt text, a contrast tweak, maybe a skip link if the audit tool complains. That framing almost guarantees you will fight the interface you already built.
+
+I have had better results treating accessibility as a product constraint from the first sketch. The question is not “can we make this pass?” It is “who cannot use this if we design it this way?”
+
+## Semantics are the cheapest architecture
+
+A heading that is actually an `h2`, a button that is actually a `button`, and a nav that is actually a `nav` do more than please a linter. They give keyboards, screen readers, and browsers a map.
+
+When a clickable `div` shows up, it is usually because the design assumed a pointer. You then reconstruct button behavior: focus, Enter, Space, disabled states, names. You are writing a second, worse browser.
+
+```html
+<!-- You now own keyboard behavior, roles, and names. -->
+<div onclick="submit()">Save</div>
+
+<!-- The platform already did that work. -->
+<button type="submit">Save</button>
+```
+
+The interesting part is not moral. It is leverage. Semantic HTML is the one accessibility investment that still helps when JavaScript fails.
+
+## Focus is a user interface
+
+If you cannot see where you are, you cannot complete a task. Focus rings get removed because they look “ugly” on mouse users, then keyboard users disappear from the product.
+
+A visible focus style is not decoration. It is the cursor for a large class of input. Theme it. Do not delete it.
+
+Mobile menus are where this usually breaks: Escape does nothing, the first Tab lands behind a hidden panel, the page still scrolls, and `aria-expanded` never updates. None of that is a library problem. It is state you declined to model.
+
+## Contrast and motion are content decisions
+
+Low-contrast body text is a brand choice that silently drops readers. Reduced motion is a content choice too: if the meaning of a screen is an animation, you have already excluded people.
+
+I keep a simple rule. If the page is trying to be read, type and spacing get the budget. Motion can wait. If an animation is load-bearing, provide a still equivalent.
+
+## What changes in the work
+
+Once accessibility is a constraint, some “clever” patterns die early: carousels of essential content, hover-only details, color as the only status signal, infinite scroll with no heading structure.
+
+That is not a smaller design space. It is a more honest one. The product has to say what it is doing in text, in order, with a keyboard path.
+
+I still miss things. Audits still find gaps. The difference is whether those gaps are leftovers from a pointer-first mock, or exceptions in a system that already assumed more than one way to arrive.

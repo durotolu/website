@@ -1,0 +1,60 @@
+---
+import { getCollection, render } from "astro:content";
+import Callout from "../../components/mdx/Callout.astro";
+import Figure from "../../components/mdx/Figure.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import {
+  formatDate,
+  isPublished,
+  readingTime,
+  relatedByTags,
+} from "../../lib/content";
+
+export async function getStaticPaths() {
+  const entries = await getCollection("notes", isPublished);
+  return entries.map((entry) => ({
+    params: { slug: entry.id },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const pool = await getCollection("notes", isPublished);
+const related = relatedByTags(entry, pool);
+const time = readingTime(entry.body ?? "");
+---
+
+<BaseLayout
+  title={entry.data.title}
+  description={entry.data.description}
+  canonicalPath={`/notes/${entry.id}`}
+>
+  <article class="mx-auto max-w-2xl px-4 py-12 sm:px-6 sm:py-16">
+    <p class="text-faint font-mono text-xs">
+      <a href="/notes" class="text-muted">Notes</a>
+      · <time datetime={entry.data.pubDate.toISOString()}
+        >{formatDate(entry.data.pubDate)}</time
+      >
+      · {time.label}
+    </p>
+    <h1 class="mt-3 font-serif text-3xl tracking-tight">{entry.data.title}</h1>
+    <div class="prose-article mt-8">
+      <Content components={{ Callout, Figure }} />
+    </div>
+    {
+      related.length > 0 ? (
+        <aside class="mt-10 font-sans text-sm">
+          <h2 class="font-serif text-lg">Related notes</h2>
+          <ul class="mt-2 p-0">
+            {related.map((item) => (
+              <li class="list-none py-1">
+                <a href={`/notes/${item.id}`}>{item.data.title}</a>
+              </li>
+            ))}
+          </ul>
+        </aside>
+      ) : null
+    }
+  </article>
+</BaseLayout>

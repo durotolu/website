@@ -1,0 +1,40 @@
+---
+import { getCollection } from "astro:content";
+import WritingListItem from "../../components/WritingListItem.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { byDateDesc, isPublished, readingTime } from "../../lib/content";
+
+const entries = (await getCollection("writing", isPublished)).sort(byDateDesc);
+const items = entries.map((entry) => ({
+  entry,
+  readingLabel: readingTime(entry.body ?? "").label,
+}));
+---
+
+<BaseLayout
+  title="Writing"
+  description="Essays and technical writing — some published here, some on Gigson."
+  canonicalPath="/writing"
+>
+  <div class="mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-16">
+    <p class="text-faint font-mono text-xs tracking-widest uppercase">
+      Archive
+    </p>
+    <h1 class="mt-2 font-serif text-4xl tracking-tight">Writing</h1>
+    <p class="text-muted mt-4 max-w-prose">
+      Long-form essays live here. Pieces originally published on Gigson open on
+      that site.
+    </p>
+    {
+      items.length > 0 ? (
+        <div class="mt-8">
+          {items.map(({ entry, readingLabel }) => (
+            <WritingListItem entry={entry} readingLabel={readingLabel} />
+          ))}
+        </div>
+      ) : (
+        <p class="text-muted mt-10">Nothing published yet.</p>
+      )
+    }
+  </div>
+</BaseLayout>

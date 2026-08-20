@@ -1,0 +1,39 @@
+---
+import { getCollection } from "astro:content";
+import NoteListItem from "../../components/NoteListItem.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { byDateDesc, isPublished, readingTime } from "../../lib/content";
+
+const entries = (await getCollection("notes", isPublished)).sort(byDateDesc);
+const items = entries.map((entry) => ({
+  entry,
+  readingLabel: readingTime(entry.body ?? "").label,
+}));
+---
+
+<BaseLayout
+  title="Notes"
+  description="Short observations, questions, and working notes."
+  canonicalPath="/notes"
+>
+  <div class="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16">
+    <p class="text-faint font-mono text-xs tracking-widest uppercase">
+      Working notes
+    </p>
+    <h1 class="mt-2 font-serif text-4xl tracking-tight">Notes</h1>
+    <p class="text-muted mt-4">
+      Shorter than essays. Useful when a thought is not ready to be an argument.
+    </p>
+    {
+      items.length > 0 ? (
+        <ul class="mt-8 p-0">
+          {items.map(({ entry, readingLabel }) => (
+            <NoteListItem entry={entry} readingLabel={readingLabel} />
+          ))}
+        </ul>
+      ) : (
+        <p class="text-muted mt-10">No notes yet.</p>
+      )
+    }
+  </div>
+</BaseLayout>

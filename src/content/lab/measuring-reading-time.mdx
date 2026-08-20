@@ -1,0 +1,22 @@
+---
+title: "Measuring reading time without lying"
+description: "I wanted a reading-time number that is computed, boring, and honest enough to put next to a title."
+pubDate: 2026-08-10
+status: concluded
+tags:
+  - writing
+  - javascript
+draft: false
+---
+
+I wondered whether reading time should live in frontmatter. It should not. Authors will forget to update it, then the metadata becomes a second draft.
+
+## The experiment
+
+Strip fenced code to a single token (you do not “read” a 200-line dump at the same pace as prose), count remaining words, divide by 220, round to at least one minute.
+
+That number is not science. It is a courtesy. If a page is a stub, it still says 1 min. If it is a long essay with examples, the count moves without anyone editing YAML.
+
+## Result
+
+Good enough for archive lists. Not good enough to brag about. I would not show it more prominently than the date.

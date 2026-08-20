@@ -1,0 +1,118 @@
+---
+import { siteConfig } from "../config";
+import ThemeToggle from "./ThemeToggle.astro";
+
+const pathname = Astro.url.pathname;
+
+const primary = [
+  { href: "/writing", label: "Writing" },
+  { href: "/notes", label: "Notes" },
+  { href: "/projects", label: "Projects" },
+  { href: "/lab", label: "Lab" },
+  { href: "/about", label: "About" },
+];
+
+function isActive(href: string) {
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+---
+
+<header class="border-line border-b">
+  <div
+    class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4 sm:px-6"
+  >
+    <a href="/" class="text-ink font-serif text-lg tracking-tight no-underline">
+      {siteConfig.name}
+    </a>
+    <nav class="hidden items-center gap-6 md:flex" aria-label="Primary">
+      {
+        primary.map((item) => (
+          <a
+            href={item.href}
+            class:list={[
+              "hover:text-accent text-sm tracking-wide no-underline",
+              isActive(item.href) ? "text-ink" : "text-muted",
+            ]}
+            aria-current={isActive(item.href) ? "page" : undefined}
+          >
+            {item.label}
+          </a>
+        ))
+      }
+      <a href="/now" class="text-muted hover:text-accent text-sm no-underline"
+        >Now</a
+      >
+      <ThemeToggle />
+    </nav>
+    <div class="flex items-center gap-2 md:hidden">
+      <ThemeToggle />
+      <button
+        type="button"
+        class="border-line bg-raised text-ink border px-3 py-1.5 text-sm"
+        data-menu-button
+        aria-controls="mobile-nav"
+        aria-label="Open menu"
+        aria-expanded="false"
+      >
+        Menu
+      </button>
+    </div>
+  </div>
+  <nav
+    id="mobile-nav"
+    class="border-line hidden border-t px-4 py-3 md:hidden"
+    data-menu-panel
+    aria-label="Mobile"
+  >
+    <ul class="flex flex-col gap-3">
+      {
+        primary.map((item) => (
+          <li>
+            <a
+              href={item.href}
+              class:list={[
+                "block py-1 no-underline",
+                isActive(item.href) ? "text-ink" : "text-muted",
+              ]}
+              aria-current={isActive(item.href) ? "page" : undefined}
+            >
+              {item.label}
+            </a>
+          </li>
+        ))
+      }
+      <li>
+        <a href="/now" class="text-muted block py-1 no-underline">Now</a>
+      </li>
+    </ul>
+  </nav>
+</header>
+
+<script>
+  const button =
+    document.querySelector<HTMLButtonElement>("[data-menu-button]");
+  const panel = document.querySelector<HTMLElement>("[data-menu-panel]");
+
+  function setOpen(open: boolean) {
+    if (!button || !panel) return;
+    button.setAttribute("aria-expanded", String(open));
+    button.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+    button.textContent = open ? "Close" : "Menu";
+    panel.classList.toggle("hidden", !open);
+    document.body.style.overflow = open ? "hidden" : "";
+  }
+
+  button?.addEventListener("click", () => {
+    const open = button.getAttribute("aria-expanded") === "true";
+    setOpen(!open);
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") setOpen(false);
+  });
+
+  panel?.querySelectorAll("a").forEach((link) => {
+    link.addEventListener("click", () => setOpen(false));
+  });
+</script>

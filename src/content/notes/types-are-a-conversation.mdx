@@ -1,0 +1,15 @@
+---
+title: "Types are a conversation with the next reader"
+description: "TypeScript earns its keep when it documents the awkward cases, not when it restates the obvious."
+pubDate: 2026-08-12
+tags:
+  - typescript
+  - learning
+draft: false
+---
+
+I used to add types the way people add comments: after the code already knew what it was doing. That produces `string` and `any` in the places that actually hurt.
+
+The useful types are the ones that name a decision. A status union. A result type that cannot be both data and an error. A function that refuses a partial object because the UI cannot render one.
+
+If a type only repeats the variable name, delete it. If a type makes a future change fail in the compiler instead of in production, keep it.

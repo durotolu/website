@@ -1,0 +1,44 @@
+---
+interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
+interface Props {
+  headings: Heading[];
+}
+
+const { headings } = Astro.props;
+const items = headings.filter(
+  (heading) => heading.depth === 2 || heading.depth === 3,
+);
+---
+
+{
+  items.length >= 3 ? (
+    <nav
+      class="border-line bg-raised mb-10 border p-4 font-sans text-sm"
+      aria-labelledby="toc-heading"
+    >
+      <h2
+        id="toc-heading"
+        class="text-faint m-0 mb-3 font-sans text-xs tracking-widest uppercase"
+      >
+        Contents
+      </h2>
+      <ol class="m-0 list-none p-0">
+        {items.map((item) => (
+          <li class:list={["py-0.5", item.depth === 3 && "pl-4"]}>
+            <a
+              href={`#${item.slug}`}
+              class="text-muted hover:text-accent no-underline"
+            >
+              {item.text}
+            </a>
+          </li>
+        ))}
+      </ol>
+    </nav>
+  ) : null
+}

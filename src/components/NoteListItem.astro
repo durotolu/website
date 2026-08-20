@@ -1,0 +1,35 @@
+---
+import type { CollectionEntry } from "astro:content";
+import { formatDate } from "../lib/content";
+
+interface Props {
+  entry: CollectionEntry<"notes">;
+  readingLabel?: string;
+}
+
+const { entry, readingLabel } = Astro.props;
+---
+
+<li
+  class="border-line grid gap-1 border-b py-4 md:grid-cols-[8rem_1fr] md:gap-6"
+>
+  <time
+    class="text-faint font-mono text-xs"
+    datetime={entry.data.pubDate.toISOString()}
+  >
+    {formatDate(entry.data.pubDate)}
+  </time>
+  <div>
+    <a
+      href={`/notes/${entry.id}`}
+      class="text-ink hover:text-accent font-medium no-underline"
+    >
+      {entry.data.title}
+    </a>
+    <p class="text-muted mt-1 text-sm">{entry.data.description}</p>
+    <p class="text-faint mt-1 font-mono text-xs">
+      {entry.data.tags.join(" · ")}
+      {readingLabel ? ` · ${readingLabel}` : ""}
+    </p>
+  </div>
+</li>

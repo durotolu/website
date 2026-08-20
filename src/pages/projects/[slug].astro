@@ -1,0 +1,100 @@
+---
+import { getCollection, render } from "astro:content";
+import Callout from "../../components/mdx/Callout.astro";
+import Figure from "../../components/mdx/Figure.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { formatDate, isPublished, statusLabel } from "../../lib/content";
+
+export async function getStaticPaths() {
+  const entries = await getCollection("projects", isPublished);
+  return entries.map((entry) => ({
+    params: { slug: entry.id },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const d = entry.data;
+const sections = [
+  { title: "The problem", body: d.problem },
+  { title: "Approach", body: d.approach },
+  { title: "Architecture", body: d.architecture },
+  { title: "Implementation", body: d.implementation },
+  { title: "Results", body: d.results },
+  { title: "What I learned", body: d.lessons },
+  { title: "What I would do differently", body: d.next },
+].filter((section) => Boolean(section.body));
+---
+
+<BaseLayout
+  title={entry.data.title}
+  description={entry.data.description}
+  canonicalPath={`/projects/${entry.id}`}
+  ogImage={entry.data.heroImage ?? undefined}
+>
+  <article class="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16">
+    <p class="text-faint font-mono text-xs">
+      <a href="/projects" class="text-muted">Projects</a>
+      · {statusLabel(d.status)}
+      · <time datetime={d.pubDate.toISOString()}>{formatDate(d.pubDate)}</time>
+    </p>
+    <h1 class="mt-3 font-serif text-4xl tracking-tight">{d.title}</h1>
+    <p class="text-muted mt-4 text-lg">{d.description}</p>
+    <p class="text-faint mt-4 font-mono text-xs">{d.tags.join(" · ")}</p>
+    <p class="mt-4 flex flex-wrap gap-4 text-sm">
+      {
+        d.githubUrl ? (
+          <a href={d.githubUrl} rel="noopener noreferrer">
+            GitHub
+          </a>
+        ) : null
+      }
+      {
+        d.liveUrl ? (
+          <a href={d.liveUrl} rel="noopener noreferrer">
+            Live
+          </a>
+        ) : null
+      }
+    </p>
+    {
+      d.heroImage ? (
+        <img
+          src={d.heroImage}
+          alt={d.heroImageAlt ?? ""}
+          class="mt-8 w-full"
+          width="1200"
+          height="630"
+          fetchpriority="high"
+        />
+      ) : null
+    }
+    <div class="prose-article mt-8">
+      <h2>Overview</h2>
+      <Content components={{ Callout, Figure }} />
+      {
+        sections.map((section) => (
+          <>
+            <h2>{section.title}</h2>
+            <p>{section.body}</p>
+          </>
+        ))
+      }
+    </div>
+    {
+      d.relatedWriting && d.relatedWriting.length > 0 ? (
+        <aside class="mt-10 text-sm">
+          <h2 class="font-serif text-lg">Related writing</h2>
+          <ul>
+            {d.relatedWriting.map((href) => (
+              <li>
+                <a href={href}>{href}</a>
+              </li>
+            ))}
+          </ul>
+        </aside>
+      ) : null
+    }
+  </article>
+</BaseLayout>

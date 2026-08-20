@@ -1,0 +1,38 @@
+---
+const label = "Toggle color theme";
+---
+
+<button
+  type="button"
+  class="border-line bg-raised text-muted hover:text-ink border px-2.5 py-1.5 text-sm"
+  data-theme-toggle
+  aria-label={label}
+>
+  Theme
+</button>
+
+<script>
+  function currentTheme() {
+    return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+  }
+
+  function applyTheme(theme: "light" | "dark") {
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+    localStorage.setItem("theme", theme);
+    document
+      .querySelectorAll<HTMLButtonElement>("[data-theme-toggle]")
+      .forEach((btn) => {
+        btn.setAttribute("aria-pressed", theme === "dark" ? "true" : "false");
+        btn.textContent = theme === "dark" ? "Light" : "Dark";
+      });
+  }
+
+  applyTheme(currentTheme());
+
+  document.querySelectorAll("[data-theme-toggle]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      applyTheme(currentTheme() === "dark" ? "light" : "dark");
+    });
+  });
+</script>

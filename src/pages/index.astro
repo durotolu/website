@@ -1,0 +1,160 @@
+---
+import { getCollection } from "astro:content";
+import NewsletterSignup from "../components/NewsletterSignup.astro";
+import ProjectCard from "../components/ProjectCard.astro";
+import WritingListItem from "../components/WritingListItem.astro";
+import { siteConfig } from "../config";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { byDateDesc, isPublished, readingTime } from "../lib/content";
+import { personJsonLd, websiteJsonLd } from "../lib/seo";
+
+const writing = (await getCollection("writing", isPublished)).sort(byDateDesc);
+const notes = (await getCollection("notes", isPublished)).sort(byDateDesc);
+const projects = (await getCollection("projects", isPublished)).sort(
+  byDateDesc,
+);
+
+const featuredWriting = writing
+  .filter((entry) => entry.data.featured)
+  .slice(0, 3);
+const writingPreview = (
+  featuredWriting.length > 0 ? featuredWriting : writing
+).slice(0, 3);
+const recentNotes = notes.slice(0, 4);
+const featuredProjects = (
+  projects.filter((entry) => entry.data.featured).length > 0
+    ? projects.filter((entry) => entry.data.featured)
+    : projects
+).slice(0, 2);
+
+const writingWithTime = writingPreview.map((entry) => ({
+  entry,
+  readingLabel: readingTime(entry.body ?? "").label,
+}));
+---
+
+<BaseLayout jsonLd={[websiteJsonLd(), personJsonLd()]}>
+  <div class="mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-24">
+    <section class="max-w-2xl">
+      <p class="text-faint font-mono text-xs tracking-widest uppercase">
+        Full-stack engineer
+      </p>
+      <h1
+        class="mt-4 font-serif text-4xl leading-tight tracking-tight text-balance sm:text-5xl"
+      >
+        {siteConfig.tagline}
+      </h1>
+      <p class="text-muted mt-6 max-w-prose text-lg">
+        This site is a working notebook: essays, short notes, selected projects,
+        and experiments. I care about clear interfaces, careful APIs, and
+        writing down what I actually learned.
+      </p>
+      <p class="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-sm">
+        <a href="/writing">Writing</a>
+        <a href="/projects">Projects</a>
+        <a href={siteConfig.social.github} rel="me noopener noreferrer"
+          >GitHub</a
+        >
+        <a href={siteConfig.social.linkedin} rel="me noopener noreferrer"
+          >LinkedIn</a
+        >
+      </p>
+    </section>
+
+    <section class="mt-20" aria-labelledby="featured-writing">
+      <div class="flex items-baseline justify-between gap-4">
+        <h2 id="featured-writing" class="font-serif text-2xl tracking-tight">
+          Featured writing
+        </h2>
+        <a href="/writing" class="text-muted text-sm">All writing</a>
+      </div>
+      {
+        writingWithTime.length > 0 ? (
+          <div>
+            {writingWithTime.map(({ entry, readingLabel }) => (
+              <WritingListItem entry={entry} readingLabel={readingLabel} />
+            ))}
+          </div>
+        ) : (
+          <p class="text-muted mt-6">No published writing yet.</p>
+        )
+      }
+    </section>
+
+    <section class="mt-16" aria-labelledby="recent-notes">
+      <div class="flex items-baseline justify-between gap-4">
+        <h2 id="recent-notes" class="font-serif text-2xl tracking-tight">
+          Recent notes
+        </h2>
+        <a href="/notes" class="text-muted text-sm">All notes</a>
+      </div>
+      {
+        recentNotes.length > 0 ? (
+          <ul class="mt-4 p-0">
+            {recentNotes.map((entry) => (
+              <li class="border-line list-none border-b py-3">
+                <a
+                  href={`/notes/${entry.id}`}
+                  class="text-ink hover:text-accent no-underline"
+                >
+                  {entry.data.title}
+                </a>
+                <span class="text-muted mt-1 block text-sm">
+                  {entry.data.description}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p class="text-muted mt-6">No notes yet.</p>
+        )
+      }
+    </section>
+
+    <section class="mt-16" aria-labelledby="projects">
+      <div class="flex items-baseline justify-between gap-4">
+        <h2 id="projects" class="font-serif text-2xl tracking-tight">
+          Projects
+        </h2>
+        <a href="/projects" class="text-muted text-sm">All projects</a>
+      </div>
+      {
+        featuredProjects.length > 0 ? (
+          <div class="mt-6 grid gap-4 md:grid-cols-2">
+            {featuredProjects.map((entry) => (
+              <ProjectCard entry={entry} />
+            ))}
+          </div>
+        ) : (
+          <p class="text-muted mt-6">No projects listed yet.</p>
+        )
+      }
+    </section>
+
+    <section
+      class="border-line mt-16 border-t pt-12"
+      aria-labelledby="currently"
+    >
+      <h2 id="currently" class="font-serif text-2xl tracking-tight">
+        Currently
+      </h2>
+      <p class="text-muted mt-3 max-w-prose">
+        A short, manually updated snapshot of what I am building, learning, and
+        reading lives on
+        <a href="/now">/now</a>.
+      </p>
+    </section>
+
+    <section class="mt-16 max-w-prose" aria-labelledby="keep-reading">
+      <h2 id="keep-reading" class="font-serif text-2xl tracking-tight">
+        Keep reading
+      </h2>
+      <p class="text-muted mt-3">
+        Start with the <a href="/writing">writing</a>, look at <a
+          href="/projects">projects</a
+        >, or follow new essays via <a href="/rss.xml">RSS</a>.
+      </p>
+      <NewsletterSignup />
+    </section>
+  </div>
+</BaseLayout>

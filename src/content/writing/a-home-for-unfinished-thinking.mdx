@@ -1,0 +1,57 @@
+---
+title: "A home for unfinished thinking"
+description: "Why this site is a content-first static knowledge hub instead of a résumé template, a CMS, or another social profile."
+pubDate: 2026-08-19
+updatedDate: 2026-08-19
+tags:
+  - writing
+  - architecture
+  - astro
+draft: false
+featured: true
+heroImage: null
+---
+
+Most personal sites I see are either a résumé with extra steps or a landing page that is trying to convert a stranger. I wanted neither.
+
+I wanted a place that can hold a long essay, a short note, a project that is still awkward, and an experiment that may never become a product — without asking a database for permission.
+
+<Callout title="The constraint">
+  A new piece of writing should be a Markdown file, a commit, and a deploy. If
+  publishing requires an admin UI, I will write less.
+</Callout>
+
+## Content first, software second
+
+The useful architecture is almost boring:
+
+Content lives in Git. Collections validate frontmatter. Layouts turn that into pages. The host serves static files.
+
+That is not a lack of ambition. It is a bet that the scarce resource is attention and honesty, not infrastructure. A CMS is useful when many people edit the same corpus. This is one person, thinking in public.
+
+Static generation also matches how I want the site to age. URLs stay stable. Drafts never ship. There is no runtime that can go stale while the writing is still true.
+
+## What the site is for
+
+I use four shapes of work on purpose:
+
+- **Writing** is the slow, edited argument.
+- **Notes** are observations I do not want to inflate into essays.
+- **Projects** are things that shipped for someone else, described without résumé metrics.
+- **Lab** is “I wondered what would happen if…”, which is how most of my actual learning starts.
+
+If everything looks like a case study, the site starts lying. Informal work needs a room of its own.
+
+## Trade-offs I accepted
+
+No search in v1. No newsletter backend. No comments. Those are easy to add and hard to stop thinking about. A static search index can sit on top of this later. An email provider can own subscriptions. The site does not need to become a product in order to be a home.
+
+JavaScript is reserved for things HTML cannot do: theme preference, a mobile menu, copying a code block. The article itself should render without a framework hydrating it.
+
+## What I am optimizing for
+
+I want a recruiter, a collaborator, or a future version of me to read a page and understand how I think — not just which logos I have stood next to.
+
+That means the writing has to be specific. Dates stay out of URLs so a piece can be revised without pretending it was always published today. Tags exist to cluster related work, not to invent a taxonomy department.
+
+If this site works, it will look slightly under-designed and slightly over-written. That is the point.

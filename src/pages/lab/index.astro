@@ -1,0 +1,56 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import {
+  byDateDesc,
+  formatDate,
+  isPublished,
+  statusLabel,
+} from "../../lib/content";
+
+const entries = (await getCollection("lab", isPublished)).sort(byDateDesc);
+---
+
+<BaseLayout
+  title="Lab"
+  description="Experiments, prototypes, and questions I wanted to try."
+  canonicalPath="/lab"
+>
+  <div class="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16">
+    <p class="text-faint font-mono text-xs tracking-widest uppercase">
+      Experiments
+    </p>
+    <h1 class="mt-2 font-serif text-4xl tracking-tight">Lab</h1>
+    <p class="text-muted mt-4">
+      Informal on purpose. These are things I tried because I wanted to know
+      what would happen.
+    </p>
+    {
+      entries.length > 0 ? (
+        <ol class="border-line mt-8 border-l p-0">
+          {entries.map((entry) => (
+            <li class="relative list-none py-5 pl-6">
+              <span class="bg-accent absolute top-7 -left-[4px] h-2 w-2 rounded-full" />
+              <p class="text-faint font-mono text-xs">
+                {formatDate(entry.data.pubDate)} ·{" "}
+                {statusLabel(entry.data.status)}
+              </p>
+              <a
+                href={`/lab/${entry.id}`}
+                class="text-ink hover:text-accent mt-1 block font-serif text-xl no-underline"
+              >
+                {entry.data.title}
+              </a>
+              <p class="text-muted mt-1 text-sm">{entry.data.description}</p>
+              <p class="text-faint mt-2 font-mono text-xs">
+                {entry.data.tags.join(" · ")}
+              </p>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p class="text-muted mt-10">No experiments yet.</p>
+      )
+    }
+  </div>
+</BaseLayout>
