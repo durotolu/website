@@ -9,7 +9,7 @@ export const siteConfig = {
     "I build software, explore ideas, and write about what I learn — a home for writing, projects, and experiments.",
   tagline: "I build software, explore ideas, and write about what I learn.",
   /** Production origin (no trailing slash). Used for canonicals, sitemap, RSS, OG. */
-  url: "https://modurotolu.com",
+  url: "https://www.modurotolu.com",
   locale: "en",
   author: {
     name: "Modurotolu Olokode",

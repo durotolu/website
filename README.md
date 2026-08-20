@@ -132,13 +132,11 @@ Edit [`src/pages/now.astro`](src/pages/now.astro). It is meant to be updated by 
 
 ## Deploy
 
-This is a static site (`dist/`) on [Vercel](https://vercel.com/). Production origin is `https://modurotolu.com`.
+This is a static site (`dist/`) on [Vercel](https://vercel.com/). Production origin is `https://www.modurotolu.com` (apex redirects there in the Vercel dashboard).
 
 1. Import the GitHub repo. Build command: `npm run build`. Output directory: `dist`.
-2. In the Vercel project: **Settings → Domains** → add `modurotolu.com`. Accept the prompt to also add `www` and redirect it to the apex.
+2. In the Vercel project: **Settings → Domains** → add `modurotolu.com`. Keep Vercel’s default: `www` as primary, apex redirects to `www`. Do not also add a host redirect in `vercel.json` — that loops CSS requests and the page loads unstyled.
 3. Point Namecheap DNS at Vercel (below). Copy the exact values from the Vercel domain card if they differ.
-
-`www` also redirects to the apex in [`vercel.json`](vercel.json).
 
 ### Namecheap DNS (Vercel)
 
@@ -148,8 +146,8 @@ In **Domain List → modurotolu.com → Advanced DNS**, remove parking/URL-redir
 
 | Type  | Host | Value                  |
 | ----- | ---- | ---------------------- |
-| A     | `@`  | `76.76.21.21`          |
-| CNAME | `www`| `cname.vercel-dns.com` |
+| A     | `@`  | Vercel domain card IP (`216.198.79.1` or similar) |
+| CNAME | `www`| Vercel CNAME target (`*.vercel-dns-017.com`) |
 
 Use the A record on `@`, not a CNAME. A CNAME on the apex would break email MX records.
 

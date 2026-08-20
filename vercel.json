@@ -9,13 +9,5 @@
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
       ]
     }
-  ],
-  "redirects": [
-    {
-      "source": "/:path*",
-      "has": [{ "type": "host", "value": "www.modurotolu.com" }],
-      "destination": "https://modurotolu.com/:path*",
-      "permanent": true
-    }
   ]
 }

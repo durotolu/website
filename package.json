@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "Personal website, writing, and knowledge hub for Modurotolu Olokode",
-  "homepage": "https://modurotolu.com",
+  "homepage": "https://www.modurotolu.com",
   "engines": {
     "node": ">=22.12.0"
   },
