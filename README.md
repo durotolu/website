@@ -132,42 +132,38 @@ Edit [`src/pages/now.astro`](src/pages/now.astro). It is meant to be updated by 
 
 ## Deploy
 
-This is a static site (`dist/`). Production origin is `https://modurotolu.com` in [`src/config.ts`](src/config.ts).
+This is a static site (`dist/`) on [Vercel](https://vercel.com/). Production origin is `https://modurotolu.com`.
 
-1. Connect the GitHub repo to [Vercel](https://vercel.com/) or [Cloudflare Pages](https://developers.cloudflare.com/pages/).
-2. Build command: `npm run build`
-3. Output directory: `dist`
-4. Add both `modurotolu.com` and `www.modurotolu.com` on the host, then point Namecheap DNS at it (below).
+1. Import the GitHub repo. Build command: `npm run build`. Output directory: `dist`.
+2. In the Vercel project: **Settings → Domains** → add `modurotolu.com`. Accept the prompt to also add `www` and redirect it to the apex.
+3. Point Namecheap DNS at Vercel (below). Copy the exact values from the Vercel domain card if they differ.
 
-`www` redirects to the apex. Headers live in [`public/_headers`](public/_headers) (Cloudflare) and [`vercel.json`](vercel.json).
+`www` also redirects to the apex in [`vercel.json`](vercel.json).
 
-### Namecheap DNS
+### Namecheap DNS (Vercel)
 
-Leave nameservers on **Namecheap BasicDNS** unless you move DNS to Cloudflare.
+Keep nameservers on **Namecheap BasicDNS**.
 
-In **Domain List → modurotolu.com → Advanced DNS**, remove Namecheap parking/URL-redirect records, then add:
+In **Domain List → modurotolu.com → Advanced DNS**, remove parking/URL-redirect records, then add:
 
-**Vercel** (after adding the domain in the Vercel project):
+| Type  | Host | Value                  |
+| ----- | ---- | ---------------------- |
+| A     | `@`  | `76.76.21.21`          |
+| CNAME | `www`| `cname.vercel-dns.com` |
 
-| Type  | Host | Value                 |
-| ----- | ---- | --------------------- |
-| A     | `@`  | `76.76.21.21`         |
-| CNAME | `www`| `cname.vercel-dns.com`|
+Use the A record on `@`, not a CNAME. A CNAME on the apex would break email MX records.
 
-Confirm the A record in Vercel’s domain settings if they list a different IP.
+TTL can stay automatic. DNS and SSL usually finish within minutes; it can take a few hours.
 
-**Cloudflare Pages** (if you keep DNS at Namecheap):
+### Email (`hello@modurotolu.com`)
 
-| Type  | Host | Value                         |
-| ----- | ---- | ----------------------------- |
-| CNAME | `@`  | `<project>.pages.dev`         |
-| CNAME | `www`| `<project>.pages.dev`         |
+The site uses `hello@modurotolu.com`. Namecheap **Redirect Email** forwards it to Gmail (or any inbox) for free:
 
-Namecheap supports CNAME on `@` via ALIAS/CNAME flattening. If you use Cloudflare DNS instead, change nameservers to the ones Cloudflare gives you and add the domain in Pages.
+1. Namecheap → **Domain List → Manage → Redirect Email**
+2. Alias: `hello` → your Gmail address
+3. Save. Namecheap sets the MX records; do not delete them.
 
-DNS can take a few minutes to a few hours. After it resolves, SSL is issued automatically by Vercel or Cloudflare.
-
-Optional: in Namecheap **Redirect Email**, forward `hello@modurotolu.com` (or any alias) to your existing inbox. The site still uses the address in `src/config.ts` until you change it.
+Mail to `hello@modurotolu.com` then lands in Gmail. Replies still come from Gmail unless you later add a real mailbox or “send as” in Gmail.
 
 ## Analytics
 

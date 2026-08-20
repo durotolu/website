@@ -13,7 +13,7 @@ export const siteConfig = {
   locale: "en",
   author: {
     name: "Modurotolu Olokode",
-    email: "durolawk@gmail.com",
+    email: "hello@modurotolu.com",
     jobTitle: "Full-stack engineer",
   },
   social: {
