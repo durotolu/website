@@ -1,4 +1,5 @@
 import { absoluteUrl, siteConfig } from "../config";
+import { generatedOgPath } from "./og-image";
 
 export function websiteJsonLd() {
   const data: Record<string, unknown> = {
@@ -43,6 +44,7 @@ export function articleJsonLd(input: {
       name: siteConfig.author.name,
     },
     mainEntityOfPage: absoluteUrl(input.path),
+    image: absoluteUrl(generatedOgPath(input.path)),
   };
   if (input.updatedDate) data.dateModified = input.updatedDate.toISOString();
   return data;

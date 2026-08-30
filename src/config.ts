@@ -31,7 +31,7 @@ export const siteConfig = {
   },
   /** Optional one-line availability note shown on About if non-empty. */
   availability: "",
-  defaultOgImage: "/og.svg",
+  defaultOgImage: "/og.png",
   cvPath: "/cv.pdf",
 } as const;
 
