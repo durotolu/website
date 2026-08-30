@@ -1,0 +1,193 @@
+---
+title: "OTA cannot cross the native boundary"
+description: "JavaScript-only updates cannot add native modules. A crash that survives OTA is often a new JS bundle on an old binary."
+pubDate: 2026-08-20
+tags:
+  - react-native
+  - expo
+  - mobile
+draft: true
+featured: false
+heroImage: null
+---
+
+If you ship mobile apps with over-the-air updates, you have probably internalized a comforting story: push a fix, users get it within minutes, no app store review required.
+
+That is mostly true — for JavaScript. The story breaks down when the fix depends on native code that was never compiled into the binary sitting on the user's phone.
+
+This happened to me in a production Expo / React Native app using PowerSync and OP-SQLite. The lesson applies far beyond that stack: to Flutter, CodePush, Shorebird, and anyone who has ever wondered why `pod install` fixed a local build while production kept crashing.
+
+<Callout title="A useful rule">
+  If adding the dependency changed `android/`, `ios/`, a Podfile, Gradle
+  configuration, native permissions, or compiled native code, assume you need a
+  rebuild. OTA cannot put that into an already-installed APK or IPA.
+</Callout>
+
+## An OTA update that could not fix the crash
+
+I was building an offline-first retail app with Expo SDK 54, React Native 0.81, PowerSync, and `@op-engineering/op-sqlite`. PowerSync needed a native database adapter, so I added OP-SQLite, wired up the provider, and shipped a JavaScript update:
+
+```bash
+eas update --channel preview --environment preview \
+  --message "Fix PowerSync OP-SQLite crash on launch"
+```
+
+The update published successfully. Users downloaded it. The app still crashed on launch.
+
+Android logcat showed:
+
+```text
+I ReactNativeJS: Running "main"
+E ReactNativeJS: [Error: Base module not found. Did you do a pod install/clear the gradle cache?]
+E AndroidRuntime: FATAL EXCEPTION: expo-updates-error-recovery
+```
+
+The stack pointed toward database initialization: `openDatabase` → `OPSQLiteConnectionPool` → `OPSQLiteDBAdapter` → `createPowerSyncDatabase` → `PowerSyncProvider`.
+
+The root cause was straightforward once we understood the deployment boundary. OP-SQLite is a JSI native module. The APK on the test device had been built *before* OP-SQLite was added as a dependency. The OTA update contained JavaScript that called OP-SQLite. The installed APK did not contain the native module.
+
+OTA updated the JavaScript layer. It could not compile native code into an already-installed APK. This was not a PowerSync configuration problem. It was a deployment mismatch: new JS, old binary.
+
+## Why try/catch was not enough
+
+A natural response is to wrap database initialization in `try/catch`. That is not always sufficient if the native module throws while being loaded. A safer approach is to probe for the native capability before loading the adapter:
+
+```ts
+function isOpSqliteNativeAvailable() {
+  if (Platform.OS === "web") return false;
+
+  try {
+    return NativeModules.OPSQLite != null;
+  } catch {
+    return false;
+  }
+}
+
+if (!isOpSqliteNativeAvailable()) {
+  console.error(
+    "[PowerSync] Native OP-SQLite is not in this binary. Rebuild required.",
+  );
+
+  return openSqlJsDatabase(); // graceful fallback
+}
+```
+
+That prevents the crash. It does not magically add native SQLite to the old APK. Users still need a new build for the native implementation.
+
+The actual fix was a native build:
+
+```bash
+eas build --profile preview --platform android
+```
+
+After installing the new APK, subsequent JavaScript-only OTA updates worked normally.
+
+## Two deployment layers
+
+Think of a cross-platform mobile app as two layers. OTA can replace the JavaScript or Dart bundle, plus assets and configuration. A native build is required for native modules and SDKs, JNI / JSI / FFI bindings, and permissions or entitlements.
+
+OTA replaces the top layer. It does not add native code to an installed binary.
+
+| Layer | Examples | Deployment |
+| --- | --- | --- |
+| JS / Dart | UI, business logic, API clients, bug fixes | OTA |
+| Native binary | SQLite, camera, payments, maps, biometrics, JSI/FFI, permissions | New APK / IPA |
+
+## Runtime versions do not change this
+
+Expo's `runtimeVersion` helps prevent incompatible OTA bundles from being delivered to incompatible binaries:
+
+```ts
+runtimeVersion: {
+  policy: "appVersion",
+},
+```
+
+If the runtime versions do not match, the update will not be applied. That is useful — but it does not make an old binary compatible with a newly introduced native module.
+
+Think of `runtimeVersion` as a compatibility gate, not a native-code delivery mechanism. If your native dependency set changes, treat that as a binary release event.
+
+## Expo Go is not a custom binary
+
+This is another common source of confusion.
+
+| Environment | Custom native modules? | Typical use |
+| --- | --- | --- |
+| Expo Go | No; only modules bundled into Expo Go | Prototyping |
+| Development build | Yes | Development with custom native dependencies |
+| Store / internal build | Yes | Testing and production |
+
+OP-SQLite cannot simply appear inside Expo Go because your JavaScript imports it. The native module must already exist in the app binary. The same principle applies to custom Firebase integrations, native payment SDKs, camera libraries, biometrics, and other native packages.
+
+## The pattern shows up everywhere
+
+OP-SQLite is just one example. An OTA cannot add a Stripe SDK, FCM entitlements, Mapbox native configuration, camera permissions, Reanimated JSI bindings, or a native database engine. Flutter has the same boundary, although the error may look different — for example `MissingPluginException`.
+
+The technology changes. The deployment model does not.
+
+## How to recognize this quickly
+
+Before debugging the library itself, ask: did we change native dependencies since the last binary users installed? If yes, suspect a deployment mismatch.
+
+A quick triage:
+
+1. Install the latest binary from scratch. Does it still crash?
+2. Compare dependencies since the last native build.
+3. Look for native packages with Android / iOS code, Podfiles, Gradle changes, JSI, FFI, or config plugins.
+4. Check the binary, not just the JavaScript bundle. Is the expected native module actually present?
+5. If OTA was the only deployment step, and native code changed, build a new binary.
+
+This distinction can save hours of debugging.
+
+## What actually fixes it
+
+Once you have confirmed a native deployment mismatch, build a new binary. Reloading Metro, clearing the JavaScript cache, or downloading another OTA update will not install missing native code. The device needs the new APK or IPA.
+
+```bash
+# Expo / EAS
+eas build --profile preview --platform android
+
+# React Native local
+npx expo prebuild --clean
+npx expo run:android
+
+# Flutter
+flutter build apk
+```
+
+Or produce the equivalent iOS / store build for your platform.
+
+If the dependency is in `package.json` but still missing from the binary, investigate autolinking and native build caches. For Expo, a clean prebuild can help. On iOS, reinstall pods when appropriate. On Android, check the Gradle build state. In a monorepo, also verify that the mobile app can actually resolve the native package. A dependency hoisted to the repository root is not useful if the native tooling fails to discover it.
+
+Permissions, entitlements, config plugins, Podfile settings, and manifest changes belong to the binary. Adding camera permission to an Expo config file does not update an APK that has already been built.
+
+## Build better safeguards
+
+The easiest way to avoid this class of incident is to make the boundary explicit in the release process. In PRs, ask whether the change adds or upgrades a package with native code, whether it changes permissions, entitlements, Gradle, Pods, or config plugins, and whether it requires a new EAS or store build before OTA deployment.
+
+| OTA-safe | Rebuild required |
+| --- | --- |
+| UI changes | New native dependency |
+| Business logic | Native dependency upgrade |
+| Copy and styles | Permissions / entitlements |
+| API behavior | Config plugins |
+| Pure JS / Dart bug fixes | Native SDK changes |
+| Feature flags | Minimum SDK / architecture changes |
+
+An OTA channel should target binaries built with a compatible native dependency set. For Expo, `runtimeVersion` is an important safety mechanism. If native code changes, consider bumping the app version or runtime so an incompatible update cannot reach an old binary.
+
+CI can also help: compare native dependency state — `package.json`, `Podfile.lock`, Gradle lockfiles — with the last native build. If they diverge, require a new binary before allowing an OTA release.
+
+## The takeaway
+
+OTA updates are incredibly useful. They are not magic. They can replace JavaScript or Dart. They can change business logic, screens, styles, and many bugs without a store release.
+
+They cannot add something that has to exist inside the native binary. That is why the PowerSync crash survived an OTA "fix." The JavaScript had changed. The APK had not.
+
+The fix was not another `eas update`. It was a new native dependency, a new native build, a new binary on the device — and only then OTA updates working again.
+
+Before the next OTA, ask one question: **did native change?** If the answer is yes, ship the binary first.
+
+For OP-SQLite or any similar native module, verify the fix on a fresh APK or IPA, on a clean device or emulator, with the native module present and the original error gone. Only then resume relying on OTA for JavaScript-only changes.
+
+New JavaScript can only use native capabilities that already exist in the installed binary.

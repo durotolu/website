@@ -1,0 +1,284 @@
+---
+title: "Telegram is not the alerting system"
+description: "Start with a chat group, keep the provider swappable, and never put a bot token in the client."
+pubDate: 2026-08-20
+tags:
+  - alerting
+  - telegram
+  - engineering
+draft: true
+featured: false
+heroImage: null
+---
+
+I wanted a simple way to know when something breaks in a new application. I did not want a full observability platform yet. I wanted a small alerting layer that could send useful errors somewhere the team already lives.
+
+For the first version, I chose Telegram. The important part is not the chat app.
+
+<Callout title="The constraint">
+  Telegram is not the alerting system. It is the first provider. The application
+  reports errors through an interface. You should be able to replace Telegram
+  with Sentry, Slack, or Datadog later without rewriting the call sites.
+</Callout>
+
+The pattern works whether the client is a React web app, a mobile app, a desktop shell, or a mix — and whether the server is Express, a serverless function, or a long-running worker.
+
+The application only needs a couple of functions. It does not need to know anything about Telegram.
+
+```ts
+captureException(error);
+captureMessage("Something happened");
+```
+
+The flow is boring on purpose: the app calls those helpers, a server ingest endpoint receives an event, and a provider sends a message. Today that provider is Telegram. Tomorrow it can be something else.
+
+## Product alerts are not engineer alerts
+
+Before wiring anything, separate two audiences.
+
+**Product notifications** — push, email, in-app banners — answer: *something the user should know.* A shipment arrived. A device has not synced in 24 hours. A payment succeeded.
+
+**Engineer alerting** — Telegram today, Sentry tomorrow — answers: *something the team must investigate.* An unhandled exception. A database connection failure. A background job that crashed. A sync upload that keeps failing.
+
+Do not route exception dumps to users. Do not route product notifications to the engineering chat. They are different systems with different audiences.
+
+The only overlap worth mentioning: if the job that *checks* user-facing conditions itself blows up, engineers should get an alert. Users should still only get the normal product notification when the check succeeds and finds a real problem.
+
+## A bot is enough to start
+
+Create a bot through Telegram's **BotFather** and keep the bot token somewhere secure. Search for `@BotFather`, run `/newbot`, follow the prompts, then add the bot to the engineering group.
+
+Telegram's Bot API uses requests like `https://api.telegram.org/bot<TOKEN>/METHOD_NAME`. For sending messages, you use `sendMessage`.
+
+<Callout title="Never ship the token" type="warning">
+  Do not put the bot token in a client-side or public environment variable.
+  Whatever your framework calls its public prefix — `NEXT_PUBLIC_`, `VITE_`,
+  `EXPO_PUBLIC_`, and similar — is the wrong place. Treat the token like a
+  password. If it has been exposed, regenerate it through BotFather.
+</Callout>
+
+Telegram needs a `chat_id` to know where to send the alert. A simple way to find it is to send a message in the group with the bot present, then call `getUpdates`:
+
+```text
+https://api.telegram.org/bot<TOKEN>/getUpdates
+```
+
+Look for `chat.id` in the response. For supergroups it is often a negative number, for example `-1001234567890`.
+
+If you get an empty `result` array, the most likely issue is **Group Privacy Mode**. Telegram bots in groups normally only receive commands and replies addressed to them. Disable privacy in BotFather under **Bot Settings → Group Privacy**, then remove the bot from the group and add it again — Telegram requires that for the change to take effect.
+
+If it still returns nothing, check whether a webhook is configured. `getUpdates` does not work while an outgoing webhook is set. Call `getWebhookInfo`, and if `"url"` is non-empty, call `deleteWebhook`. Then send another message and try `getUpdates` again.
+
+A useful confirmation is `getMe`. If `"can_read_all_group_messages"` is `true`, privacy mode is disabled.
+
+## Keep Telegram behind an interface
+
+This is the part that makes the implementation reusable. Instead of scattering `sendTelegramMessage(error.message)` through the application, define a provider-neutral event:
+
+```ts
+type AlertSeverity = "error" | "warning" | "info";
+type AlertSource = "client" | "server" | "worker";
+
+type AlertEvent = {
+  title: string;
+  message: string;
+  severity: AlertSeverity;
+  source: AlertSource;
+  stack?: string;
+  context?: Record<string, unknown>;
+  fingerprint?: string;
+};
+
+interface AlertProvider {
+  send(event: AlertEvent): Promise<void>;
+}
+```
+
+On the client, think in terms of a **sink** — whatever receives the event and forwards it. HTTP today, a vendor SDK tomorrow.
+
+```ts
+type AlertSink = (event: AlertEvent) => void | Promise<void>;
+
+let configuredSink: AlertSink | null = null;
+
+function configureAlerting(sink: AlertSink) {
+  configuredSink = sink;
+}
+
+async function emit(event: AlertEvent): Promise<void> {
+  const sink = configuredSink ?? defaultDevSink;
+  try {
+    await sink(event);
+  } catch (err) {
+    console.error("[alerting] sink failed", err);
+  }
+}
+
+async function captureException(
+  error: unknown,
+  context?: Record<string, unknown>,
+) {
+  const err = error instanceof Error ? error : new Error(String(error));
+  await emit({
+    title: err.name || "Error",
+    message: err.message || "Unknown error",
+    severity: "error",
+    source: "client",
+    stack: err.stack,
+    context,
+  });
+}
+```
+
+The capture helpers should be fire-and-forget: they never throw. A failure to report an error should not become a second crash. The application calls `captureException`. The alerting layer decides what happens next.
+
+## Send the alert through a server
+
+I do not want the client talking directly to Telegram. The app posts an `AlertEvent` to an ingest endpoint. The server calls `sendMessage`. The client gets `202 Accepted`. That keeps the token on the server. The route might be `/api/alerts`, `/functions/v1/ops-alerts`, or whatever your stack provides — the shape is the same.
+
+```ts
+async function sendToTelegram(event: AlertEvent) {
+  const text = formatAlert(event);
+
+  await fetch(
+    `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: TELEGRAM_CHAT_ID,
+        text,
+        parse_mode: "Markdown",
+      }),
+    },
+  );
+}
+```
+
+That is basically all the Telegram-specific code you need on the server.
+
+A few details worth baking in from the start:
+
+- **Pre-login crashes.** Boot-time failures happen before auth exists. Accept reports with a public ingest key or anonymous POST so early crashes still reach the team.
+- **Validate payloads.** Cap title, message, and stack length so one bad client cannot spam megabytes into the chat.
+- **Return 202 Accepted** even if Telegram fails. Do not leak provider errors back to the client. Alerting should never become part of the user-facing error path.
+
+Store secrets in server-only env vars (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`) or your host's secrets manager — not in the client bundle.
+
+## Make the provider replaceable
+
+The server can choose the provider from configuration:
+
+```env
+ALERTING_PROVIDER=telegram
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+```
+
+```ts
+function createAlertProvider(): AlertProvider {
+  switch (process.env.ALERTING_PROVIDER) {
+    case "telegram":
+      return new TelegramProvider();
+
+    case "sentry":
+      return new SentryProvider();
+
+    default:
+      return new NoopProvider();
+  }
+}
+```
+
+There are two natural swap points. The **client sink** is an HTTP POST today and a Sentry or Datadog SDK tomorrow; call sites stay `captureException`. The **server provider** is `TelegramProvider` today and `SentryProvider` tomorrow; the ingest endpoint and other server code call the same factory.
+
+Changing providers becomes a configuration and implementation change rather than an application-wide rewrite. I wired the client sink through a shared package and the ingest endpoint through a serverless function. The pattern is identical whether the backend is Express, Lambda, Deno, or a Rails API.
+
+## Keep alerts useful
+
+A Telegram message does not need to contain the entire exception object. I prefer something like:
+
+```text
+🚨 ERROR
+
+Payment processing failed
+
+Source: server
+Operation: process-payment
+
+Message:
+Payment provider timed out
+
+Context:
+order_id: 12345
+environment: production
+```
+
+Useful fields usually include severity, the error or message, source (client, server, worker), operation or route name, environment, relevant IDs, and a short stack trace.
+
+Do not send sensitive data just because it is available. No passwords, tokens, session cookies, or full PII dumps in `context`. Truncate long stack traces and escape Markdown special characters so the message stays readable and Telegram does not reject the formatting.
+
+This is just as important as getting the alerts working: do not alert on expected behaviour. Invalid passwords, invalid OTP, form validation, expected 404s, and normal business-rule rejections do not belong in the engineering chat. Unhandled exceptions, database failures, background job crashes, unexpected API failures, sync failures, and repeated third-party timeouts do.
+
+<Callout title="A useful rule">
+  If an engineer needs to investigate it, alert on it. If it is normal
+  application behaviour, do not.
+</Callout>
+
+One exception can easily happen thousands of times. A simple fingerprint and cooldown is enough to start: five minutes on the server, a few seconds on the client to suppress bursts from tight retry loops.
+
+```ts
+function fingerprint(event: AlertEvent): string {
+  return event.fingerprint ?? `${event.title}|${event.message}`;
+}
+
+const COOLDOWN_MS = 5 * 60 * 1000;
+const lastSent = new Map<string, number>();
+
+async function sendWithDedupe(
+  provider: AlertProvider,
+  event: AlertEvent,
+) {
+  const key = fingerprint(event);
+  const now = Date.now();
+  const prev = lastSent.get(key);
+  if (prev && now - prev < COOLDOWN_MS) return;
+  lastSent.set(key, now);
+  await provider.send(event);
+}
+```
+
+You can make this more sophisticated later — rate limits per route, exponential backoff, aggregation windows — but basic deduplication goes a long way.
+
+## Where to wire captureException
+
+Sentry-style coverage does not require Sentry. Wire the same hooks in any stack: error boundaries in the UI, unhandled rejection and fatal error hooks at the runtime, failed uploads and poison messages in the data layer, API catch blocks and worker crash handlers on the server.
+
+```tsx
+class AlertErrorBoundary extends React.Component {
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    captureException(error, { componentStack: info.componentStack });
+  }
+
+  render() {
+    // show retry UI when state has error
+  }
+}
+```
+
+The equivalent in Vue, Svelte, Flutter, or native mobile is the same idea: catch at the UI boundary, report through `captureException`, show a recovery screen. Do not rethrow into the user's face.
+
+On the server, a single `captureException(err, { operation: "process-payment" })` in a catch block is often enough to start.
+
+## The result
+
+The application does not depend on Telegram. It depends on an alerting interface. Telegram is simply the first implementation.
+
+That is what makes this useful beyond Telegram: you can start with a five-minute integration today and still have a reasonable path toward a proper observability platform later. Start simple. Keep the provider behind an interface. Add complexity only when you actually need it.
+
+Do not try to match Sentry on day one. A minimal Telegram layer typically does not include source map resolution, breadcrumbs, session replay, release tracking, or a durable offline queue. Those are good problems to solve when the pain justifies the tooling — not prerequisites for knowing the app is on fire.
+
+## Further reading
+
+- [How I replaced Sentry and the rest for good — the $0 Telegram alerting hack](https://dev.to/playfulprogramming/how-i-replaced-sentry-and-the-rest-for-good-the-0-telegram-alerting-hack-2ecl) — the inspiration for starting with Telegram.
+- [Telegram Bot API — getUpdates](https://core.telegram.org/bots/api#getupdates) — official reference for fetching updates and chat IDs.
