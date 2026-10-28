@@ -2,13 +2,15 @@
 import { getCollection } from "astro:content";
 import WritingListItem from "../../components/WritingListItem.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { byDateDesc, isPublished, readingTime } from "../../lib/content";
+import { byDateDesc, formatDate, isExternalWriting, isPublished, readingTime } from "../../lib/content";
 
 const entries = (await getCollection("writing", isPublished)).sort(byDateDesc);
 const items = entries.map((entry) => ({
   entry,
   readingLabel: readingTime(entry.body ?? "").label,
 }));
+const localItems = items.filter(({ entry }) => !isExternalWriting(entry));
+const externalItems = items.filter(({ entry }) => isExternalWriting(entry));
 ---
 
 <BaseLayout
@@ -22,18 +24,50 @@ const items = entries.map((entry) => ({
     </p>
     <h1 class="mt-2 font-serif text-4xl tracking-tight">Writing</h1>
     <p class="text-muted mt-4 max-w-prose">
-      Long-form essays live here. Pieces originally published on external sites open on external sites.
+      Long-form essays live here. Pieces published elsewhere are listed below.
     </p>
     {
-      items.length > 0 ? (
+      localItems.length > 0 ? (
         <div class="mt-8">
-          {items.map(({ entry, readingLabel }) => (
+          {localItems.map(({ entry, readingLabel }) => (
             <WritingListItem entry={entry} readingLabel={readingLabel} />
           ))}
         </div>
       ) : (
         <p class="text-muted mt-10">Nothing published yet.</p>
       )
+    }
+    {
+      externalItems.length > 0 ? (
+        <section class="mt-16" aria-labelledby="elsewhere">
+          <h2 id="elsewhere" class="text-faint font-mono text-xs tracking-widest uppercase">
+            On other sites
+          </h2>
+          <ul class="-mx-4 mt-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6">
+            {externalItems.map(({ entry }) => (
+              <li class="w-72 shrink-0 snap-start list-none">
+                <a
+                  href={entry.data.externalUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="border-line hover:border-accent flex h-full flex-col rounded-lg border p-5 no-underline"
+                >
+                  <span class="text-faint font-mono text-xs tracking-wide uppercase">
+                    {entry.data.venue ?? "External"} · {formatDate(entry.data.pubDate)}
+                  </span>
+                  <span class="text-ink mt-2 font-serif text-lg leading-snug">
+                    {entry.data.title}
+                    <span class="sr-only"> (opens in a new tab)</span>
+                  </span>
+                  <span class="text-muted mt-2 line-clamp-3 text-sm">
+                    {entry.data.description}
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null
     }
   </div>
 </BaseLayout>
